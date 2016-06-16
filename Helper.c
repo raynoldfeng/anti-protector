@@ -89,8 +89,9 @@ PVOID GetSystemModuleBase(CHAR	* target_name) {
 	int module_count = system_module_info->Count;
 	for(int i=0; i<module_count; i++){
 		CHAR* name = system_module_info->Module[i].ImageName + system_module_info->Module[i].PathLength;
+		//DbgPrint("kernel module: %s,%p \n", name, system_module_info->Module[i].Base);
 		if (_stricmp(name, target_name) == 0) {
-			system_module_info->Module[i].Base;
+			return system_module_info->Module[i].Base;
 		}
 	}
 	return NULL;
