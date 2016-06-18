@@ -1,4 +1,6 @@
 EXTERN_C_START
+#define offset_drvobjlist 0x16a58
+#define offset_drvobj_base 0x18
 
 VOID GetKeServiceDescriptorTable();
 PVOID GetSSDTFuncByIndex(INT32);

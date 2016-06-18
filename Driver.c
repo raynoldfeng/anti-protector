@@ -76,10 +76,10 @@ Return Value:
 	DbgPrint("[NtCreateDebugObject] address: %p\n", pNtCreateDebugObject);
 
 	char DbgObjectTypeSig[] = {0x48, 0x83, 0x64, 0x24, 0x20, 0x00, 0x45, 0x8a, 0xca, 0x48, 0x8b, 0x15};
-	PVOID addr = FindSignature(pNtCreateDebugObject, 0x100, DbgObjectTypeSig, sizeof(DbgObjectTypeSig));
-	addr = (PVOID)((ULONGLONG)addr + sizeof(DbgObjectTypeSig));
-	INT32 offset = *(INT32*)addr;
-	PVOID DbgkDebugObjectType = *(PVOID*)(offset + (ULONGLONG)addr + 4);
+	PVOID DbgObjAdr = FindSignature(pNtCreateDebugObject, 0x100, DbgObjectTypeSig, sizeof(DbgObjectTypeSig));
+	DbgObjAdr = (PVOID)((ULONGLONG)DbgObjAdr + sizeof(DbgObjectTypeSig));
+	INT32 offset = *(INT32*)DbgObjAdr;
+	PVOID DbgkDebugObjectType = *(PVOID*)(offset + (ULONGLONG)DbgObjAdr + 4);
 	DbgPrint("[DbgkDebugObjectType] address: %p\n", DbgkDebugObjectType);
 	//_OBJECT_TYPE.TypeInfo
 	UINT32* pTypeInfo = (PVOID)((ULONGLONG)DbgkDebugObjectType + 0x40);
@@ -90,8 +90,39 @@ Return Value:
 	DbgPrint("[ValidAccessMask] : %x -> %x \n", AccessMask, *pValidAccessMask);
    
 	PVOID tp_loader = GetSystemModuleBase("TesSafe.sys");
-	DbgPrint("[Tessafe.sys] address: %p\n", tp_loader);
+	if (tp_loader != NULL) {
+		DbgPrint("[Tessafe.sys] address: %p\n", tp_loader);
 
+		PVOID* global_drvobjlist = (PVOID*)((ULONGLONG)tp_loader + offset_drvobjlist);
+		PVOID* pmodule_list = *global_drvobjlist;
+		LONGLONG module_count = *(LONGLONG*)((ULONGLONG)pmodule_list + 0x10);
+		DbgPrint("kernal moudule list: %p, count:%x \n", pmodule_list, module_count);
+
+		PVOID modulebase;
+		PVOID* pmodule = *pmodule_list;
+		PVOID tessafe = NULL;
+		while (module_count) {
+			modulebase = *(PVOID*)((ULONGLONG)*pmodule + offset_drvobj_base);
+			//一串TEXT段开头的特征码
+			char tpsig[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x57, 0x48, 0x83, 0xec, 0x30};
+			PVOID tpsig_adr = FindSignature(modulebase, 0x2000, tpsig, sizeof(tpsig));
+			if (tpsig_adr) {
+				tessafe = modulebase;
+				DbgPrint("Tessafe module address: %p\n", modulebase);
+			}
+			else {
+				DbgPrint("kernal moudule address: %p\n", modulebase);
+			}
+			pmodule++;
+			module_count--;
+		}		
+	}
+	UNICODE_STRING disabledbg;
+	RtlInitUnicodeString(&disabledbg, L"KdDisableDebugger");
+	PVOID disabledbg_adr = MmGetSystemRoutineAddress(&disabledbg);
+	DbgPrint("KdDisableDebugger address: %p\n", disabledbg_adr);
+	
+	
 	WDF_OBJECT_ATTRIBUTES_INIT(&attributes);
     attributes.EvtCleanupCallback = DriverTestEvtDriverContextCleanup;
 
