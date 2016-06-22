@@ -6,7 +6,7 @@ VOID GetKeServiceDescriptorTable();
 PVOID GetSSDTFuncByIndex(INT32);
 PVOID FindSignature(PVOID target, INT32 targetlen, PVOID sig, INT32 siglen);
 PVOID GetSystemModuleBase(CHAR	* target_name);
-
+VOID ResetValidAccess(PVOID dbgobjtype);
 //模块详细信息结构如下：
 typedef struct _SYSTEM_MODULE_INFORMATION_ENTRY {
 	HANDLE Section;

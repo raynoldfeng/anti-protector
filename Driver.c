@@ -81,13 +81,6 @@ Return Value:
 	INT32 offset = *(INT32*)DbgObjAdr;
 	PVOID DbgkDebugObjectType = *(PVOID*)(offset + (ULONGLONG)DbgObjAdr + 4);
 	DbgPrint("[DbgkDebugObjectType] address: %p\n", DbgkDebugObjectType);
-	//_OBJECT_TYPE.TypeInfo
-	UINT32* pTypeInfo = (PVOID)((ULONGLONG)DbgkDebugObjectType + 0x40);
-	//_OBJECT_TYPE_INITIALIZER.ValidAccessMask
-	UINT32* pValidAccessMask = (PVOID)((ULONGLONG)pTypeInfo + 0x1c);
-	UINT32 AccessMask = *pValidAccessMask;
-	*pValidAccessMask = 0x1f000f;
-	DbgPrint("[ValidAccessMask] : %x -> %x \n", AccessMask, *pValidAccessMask);
    
 	PVOID tp_loader = GetSystemModuleBase("TesSafe.sys");
 	if (tp_loader != NULL) {
@@ -109,6 +102,12 @@ Return Value:
 			if (tpsig_adr) {
 				tessafe = modulebase;
 				DbgPrint("Tessafe module address: %p\n", modulebase);
+				PVOID* tp_dbgtype = FindSignature(modulebase, 0x20000, DbgkDebugObjectType, 8);
+				if (tp_dbgtype) {
+					DbgPrint("Tessafe gDebugObjectType address: %p\n", tp_dbgtype);
+					*tp_dbgtype = 0;
+					ResetValidAccess(DbgkDebugObjectType);
+				}
 			}
 			else {
 				DbgPrint("kernal moudule address: %p\n", modulebase);

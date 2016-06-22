@@ -6,6 +6,17 @@
 
 ULONGLONG KeServiceDescriptortable;
 VOID 
+ResetValidAccess(PVOID DbgkDebugObjectType)
+{
+	//_OBJECT_TYPE.TypeInfo
+	UINT32* pTypeInfo = (PVOID)((ULONGLONG)DbgkDebugObjectType + 0x40);
+	//_OBJECT_TYPE_INITIALIZER.ValidAccessMask
+	UINT32* pValidAccessMask = (PVOID)((ULONGLONG)pTypeInfo + 0x1c);
+	UINT32 AccessMask = *pValidAccessMask;
+	*pValidAccessMask = 0x1f000f;
+	DbgPrint("[ValidAccessMask] : %x -> %x \n", AccessMask, *pValidAccessMask);
+}
+VOID 
 GetKeServiceDescriptorTable()
 {
 	PUCHAR StartSearchAddress = (PUCHAR)__readmsr(0xC0000082);
