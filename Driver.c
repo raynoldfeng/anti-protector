@@ -60,6 +60,9 @@ Return Value:
     NTSTATUS status;
     WDF_OBJECT_ATTRIBUTES attributes;
 
+	// 绕过MmVerifyCallbackFunction，否则无法挂钩回掉
+	PCHAR pflag = (PVOID)((ULONGLONG)DriverObject->DriverSection + 0x68);
+	*pflag = *pflag | 0x20;
     //
     // Initialize WPP Tracing
     //
@@ -82,11 +85,13 @@ Return Value:
 	PVOID DbgkDebugObjectType = *(PVOID*)(offset + (ULONGLONG)DbgObjAdr + 4);
 	DbgPrint("[DbgkDebugObjectType] address: %p\n", DbgkDebugObjectType);
    
-	PVOID tp_loader = GetSystemModuleBase("TesSafe.sys");
-	if (tp_loader != NULL) {
-		DbgPrint("[Tessafe.sys] address: %p\n", tp_loader);
+	PVOID tp_loader_base = NULL;
+	LONG tp_loader_size = 0;
+	GetKernelModuleInfo("TesSafe.sys", &tp_loader_base, &tp_loader_size);
+	if (tp_loader_base != NULL) {
+		DbgPrint("[Tessafe.sys] address: %p\n", tp_loader_base);
 
-		PVOID* global_drvobjlist = (PVOID*)((ULONGLONG)tp_loader + offset_drvobjlist);
+		PVOID* global_drvobjlist = (PVOID*)((ULONGLONG)tp_loader_base + offset_drvobjlist);
 		PVOID* pmodule_list = *global_drvobjlist;
 		LONGLONG module_count = *(LONGLONG*)((ULONGLONG)pmodule_list + 0x10);
 		DbgPrint("kernal moudule list: %p, count:%x \n", pmodule_list, module_count);
@@ -121,6 +126,22 @@ Return Value:
 	PVOID disabledbg_adr = MmGetSystemRoutineAddress(&disabledbg);
 	DbgPrint("KdDisableDebugger address: %p\n", disabledbg_adr);
 	
+	PLIST_ENTRY entry = GetProcCallList();
+	if (entry) {
+		PLIST_ENTRY back = entry->Blink;
+		while (back != entry) {
+			PCALLBACK_BODY pnode = (PCALLBACK_BODY)back;
+			ULONGLONG pre_func = (ULONGLONG)pnode->PreOperation;
+			ULONGLONG post_func = (ULONGLONG)pnode->PostOperation;
+
+			if (((pre_func > (ULONGLONG)tp_loader_base) && (pre_func < (ULONGLONG)tp_loader_base + tp_loader_size)) ||
+				(post_func > (ULONGLONG)tp_loader_base) && (post_func < (ULONGLONG)tp_loader_base + tp_loader_size)) {
+				ObUnRegisterCallbacks(pnode->Handle);
+				DbgPrint("UnRegistering Callback pre:%p post:%p\n", pre_func, post_func);
+			}
+			back = back->Blink;
+		}
+	}
 	
 	WDF_OBJECT_ATTRIBUTES_INIT(&attributes);
     attributes.EvtCleanupCallback = DriverTestEvtDriverContextCleanup;

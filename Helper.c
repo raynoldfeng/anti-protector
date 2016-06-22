@@ -75,7 +75,7 @@ FindSignature(PVOID target, INT32 targetlen, PVOID sig, INT32 siglen) {
 	return NULL;
 }
 
-PVOID GetSystemModuleBase(CHAR	* target_name) {
+PVOID GetKernelModuleInfo(CHAR	* target_name, PVOID* base, LONG* size) {
 	PVOID buffer = NULL;
 	ULONG buf_size = 0x5000;
 	NTSTATUS result;
@@ -102,9 +102,53 @@ PVOID GetSystemModuleBase(CHAR	* target_name) {
 		CHAR* name = system_module_info->Module[i].ImageName + system_module_info->Module[i].PathLength;
 		//DbgPrint("kernel module: %s,%p \n", name, system_module_info->Module[i].Base);
 		if (_stricmp(name, target_name) == 0) {
-			return system_module_info->Module[i].Base;
+			*base = system_module_info->Module[i].Base;
+			*size = system_module_info->Module[i].Size;
+
 		}
 	}
 	return NULL;
 
 }
+
+OB_PREOP_CALLBACK_STATUS
+PreCall(PVOID RegistrationContext, POB_PRE_OPERATION_INFORMATION pOperationInformation)
+{
+	PVOID unused1 = RegistrationContext;
+	PVOID unused2 = pOperationInformation;
+	ULONGLONG unused3 = 0;
+	unused3 = (ULONGLONG)unused1 + (ULONGLONG)unused2;
+	return OB_PREOP_SUCCESS;
+}
+
+PLIST_ENTRY 
+GetProcCallList()
+{
+	NTSTATUS status;
+	OB_CALLBACK_REGISTRATION obReg;
+	OB_OPERATION_REGISTRATION opReg;
+	PCALLBACK_NODE obHandle;
+
+	memset(&obReg, 0, sizeof(obReg));
+	obReg.Version = ObGetFilterVersion();
+	obReg.OperationRegistrationCount = 1;
+	obReg.RegistrationContext = NULL;
+	RtlInitUnicodeString(&obReg.Altitude, L"CallBack");
+	memset(&opReg, 0, sizeof(opReg));//Init Struct
+	opReg.ObjectType = PsProcessType;
+	opReg.Operations = OB_OPERATION_HANDLE_CREATE | OB_OPERATION_HANDLE_DUPLICATE;
+	opReg.PreOperation = (POB_PRE_OPERATION_CALLBACK)&PreCall;
+	//opReg.PostOperation=(POB_POST_OPERATION_CALLBACK)&PostCall;
+	obReg.OperationRegistration = &opReg;
+	status = ObRegisterCallbacks(&obReg, &obHandle);
+	if(NT_SUCCESS(status)){
+		PLIST_ENTRY self = &(obHandle->Entries[0].CallbackList);
+		ObUnRegisterCallbacks((PVOID)obHandle);
+		return self->Blink;
+	}
+	else {
+		DbgPrint("RegisterCallback failed! errcode:%x", status);
+	}
+	return NULL;
+}
+

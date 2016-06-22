@@ -5,8 +5,9 @@ EXTERN_C_START
 VOID GetKeServiceDescriptorTable();
 PVOID GetSSDTFuncByIndex(INT32);
 PVOID FindSignature(PVOID target, INT32 targetlen, PVOID sig, INT32 siglen);
-PVOID GetSystemModuleBase(CHAR	* target_name);
+PVOID GetKernelModuleInfo(CHAR	* target_name, PVOID* base, LONG* size);
 VOID ResetValidAccess(PVOID dbgobjtype);
+PLIST_ENTRY GetProcCallList();
 //模块详细信息结构如下：
 typedef struct _SYSTEM_MODULE_INFORMATION_ENTRY {
 	HANDLE Section;
@@ -94,4 +95,25 @@ NtQuerySystemInformation(IN  SYSTEM_INFORMATION_CLASS SystemInformationClass,
 	OUT PULONG ReturnLength OPTIONAL);
 
 
+typedef struct _CALLBACK_BODY {
+	LIST_ENTRY                  CallbackList;
+	OB_OPERATION                Operations;
+	ULONG                       Active;
+	HANDLE						Handle;
+	POBJECT_TYPE                ObjectType;
+	POB_PRE_OPERATION_CALLBACK  PreOperation;
+	POB_POST_OPERATION_CALLBACK PostOperation;
+	EX_RUNDOWN_REF              RundownProtection;
+} CALLBACK_BODY, *PCALLBACK_BODY;
+
+typedef struct _CALLBACK_NODE {
+	USHORT         Version;
+	USHORT         OperationRegistrationCount;
+	PVOID          RegistrationContext;
+	UNICODE_STRING Altitude;
+	CALLBACK_BODY  Entries[1];
+} CALLBACK_NODE, *PCALLBACK_NODE;
+
+OB_PREOP_CALLBACK_STATUS
+PreCall(PVOID RegistrationContext, POB_PRE_OPERATION_INFORMATION pOperationInformation);
 EXTERN_C_END
