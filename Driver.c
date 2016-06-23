@@ -107,11 +107,19 @@ Return Value:
 			if (tpsig_adr) {
 				tessafe = modulebase;
 				DbgPrint("Tessafe module address: %p\n", modulebase);
-				PVOID* tp_dbgtype = FindSignature(modulebase, 0x20000, DbgkDebugObjectType, 8);
+				//找TP里保存的DebugObjectType
+				PVOID* tp_dbgtype = FindSignature(modulebase, 0x20000, DbgkDebugObjectType, sizeof(PVOID));
 				if (tp_dbgtype) {
 					DbgPrint("Tessafe gDebugObjectType address: %p\n", tp_dbgtype);
 					*tp_dbgtype = 0;
 					ResetValidAccess(DbgkDebugObjectType);
+				}
+				//找TP里的PsProcType
+				PVOID* tp_psproctype = FindSignature(modulebase, 0x20000, &PsProcessType, sizeof(PVOID));
+				if (tp_psproctype) {
+					DbgPrint("Tessafe extended PsProcessType address: %p\n", tp_psproctype);
+					*tp_psproctype = IoFileObjectType;
+					
 				}
 			}
 			else {
@@ -121,6 +129,7 @@ Return Value:
 			module_count--;
 		}		
 	}
+
 	UNICODE_STRING disabledbg;
 	RtlInitUnicodeString(&disabledbg, L"KdDisableDebugger");
 	PVOID disabledbg_adr = MmGetSystemRoutineAddress(&disabledbg);
@@ -136,13 +145,15 @@ Return Value:
 
 			if (((pre_func > (ULONGLONG)tp_loader_base) && (pre_func < (ULONGLONG)tp_loader_base + tp_loader_size)) ||
 				(post_func > (ULONGLONG)tp_loader_base) && (post_func < (ULONGLONG)tp_loader_base + tp_loader_size)) {
-				ObUnRegisterCallbacks(pnode->Handle);
-				DbgPrint("UnRegistering Callback pre:%p post:%p\n", pre_func, post_func);
+	//			ObUnRegisterCallbacks(pnode->Handle);
+				DbgPrint("Tessafe registered Callback function pre:%p post:%p\n", pre_func, post_func);
 			}
 			back = back->Blink;
 		}
 	}
-	
+
+
+
 	WDF_OBJECT_ATTRIBUTES_INIT(&attributes);
     attributes.EvtCleanupCallback = DriverTestEvtDriverContextCleanup;
 
