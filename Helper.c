@@ -1,9 +1,5 @@
 #include "driver.h"
 
-#ifdef ALLOC_PRAGMA
-#pragma alloc_text (PAGE, DriverTestCreateDevice)
-#endif
-
 ULONGLONG KeServiceDescriptortable;
 VOID 
 ResetValidAccess(PVOID DbgkDebugObjectType)

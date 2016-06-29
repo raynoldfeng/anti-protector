@@ -33,6 +33,7 @@ EXTERN_C_START
 DRIVER_INITIALIZE DriverEntry;
 EVT_WDF_DRIVER_DEVICE_ADD DriverTestEvtDeviceAdd;
 EVT_WDF_OBJECT_CONTEXT_CLEANUP DriverTestEvtDriverContextCleanup;
+EVT_WDF_DRIVER_UNLOAD DriverTestEvtDriverUnload;
 
 typedef struct _OBJECT_TYPE_INITIALIZER {
 	USHORT Length;		// Uint2B

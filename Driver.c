@@ -21,9 +21,22 @@ Environment:
 #pragma alloc_text (INIT, DriverEntry)
 #pragma alloc_text (PAGE, DriverTestEvtDeviceAdd)
 #pragma alloc_text (PAGE, DriverTestEvtDriverContextCleanup)
+#pragma alloc_text (PAGE, DriverTestEvtDriverUnload)
 //#pragma alloc_text (PAGE, FindDebugObjectType)
 #endif
 
+
+VOID DriverTestEvtDriverUnload(
+	_In_
+	WDFDRIVER Driver
+	)
+{
+	DbgPrint("DriverTestEvtDriverUnload \n", Driver);
+	/*该方法会导致驱动卸载时崩溃，改为修改保护列表
+	if (tp_psproctype) {
+		*tp_psproctype = PsProcessType;
+	}*/
+}
 
 NTSTATUS
 DriverEntry(
@@ -56,6 +69,8 @@ Return Value:
 
 --*/
 {
+
+	DbgPrint("DriverEntry\n");
     WDF_DRIVER_CONFIG config;
     NTSTATUS status;
     WDF_OBJECT_ATTRIBUTES attributes;
@@ -115,12 +130,21 @@ Return Value:
 					ResetValidAccess(DbgkDebugObjectType);
 				}
 				//找TP里的PsProcType
-				PVOID* tp_psproctype = FindSignature(modulebase, 0x20000, &PsProcessType, sizeof(PVOID));
+				//该方法会导致TP卸载崩溃
+				/*tp_psproctype = FindSignature(modulebase, 0x20000, &PsProcessType, sizeof(PVOID));
 				if (tp_psproctype) {
 					DbgPrint("Tessafe extended PsProcessType address: %p\n", tp_psproctype);
 					*tp_psproctype = IoFileObjectType;
 					
-				}
+				}*/
+				char sigDbgPrintDump[] = {0x4c, 0x8b, 0xdc, 0x49, 0x89, 0x4b, 0x08 };
+				PVOID DbgPrintDump = FindSignature(tp_loader_base, 0x10000, sigDbgPrintDump, sizeof(sigDbgPrintDump));
+				DbgPrint("loader's DbgPrintDump address: %p\n", DbgPrintDump);
+				//被保护进程列表在gLPDbgPrintDump前一个
+				PVOID gLPDbgPrintDump = FindSignature(modulebase, 0x20000, &DbgPrintDump, sizeof(PVOID));
+				PVOID* protect_list = (PVOID*)((ULONGLONG)gLPDbgPrintDump - sizeof(PVOID));
+				DbgPrint("proctect list: %p\n", protect_list);
+				*protect_list = NULL;
 			}
 			else {
 				DbgPrint("kernal moudule address: %p\n", modulebase);
@@ -153,13 +177,15 @@ Return Value:
 	}
 
 
-
 	WDF_OBJECT_ATTRIBUTES_INIT(&attributes);
-    attributes.EvtCleanupCallback = DriverTestEvtDriverContextCleanup;
+	attributes.EvtCleanupCallback = DriverTestEvtDriverContextCleanup;
 
     WDF_DRIVER_CONFIG_INIT(&config,
-                           DriverTestEvtDeviceAdd
+                           NULL
                            );
+
+	config.DriverInitFlags = WdfDriverInitNonPnpDriver;  //非pnp
+	config.EvtDriverUnload = DriverTestEvtDriverUnload;  //卸载函
 
     status = WdfDriverCreate(DriverObject,
                              RegistryPath,
@@ -170,12 +196,13 @@ Return Value:
 
     if (!NT_SUCCESS(status)) {
         TraceEvents(TRACE_LEVEL_ERROR, TRACE_DRIVER, "WdfDriverCreate failed %!STATUS!", status);
+		DbgPrint("Entry failed exit :%x\n", status);
         WPP_CLEANUP(DriverObject);
         return status;
     }
 
     TraceEvents(TRACE_LEVEL_INFORMATION, TRACE_DRIVER, "%!FUNC! Exit");
-
+	DbgPrint("Entry successed exit :%x\n", status);
     return status;
 }
 
@@ -203,6 +230,8 @@ Return Value:
 
 --*/
 {
+	DbgPrint("DriverTestEvtDeviceAdd \n");
+
     NTSTATUS status;
 
     UNREFERENCED_PARAMETER(Driver);
@@ -237,6 +266,7 @@ Return Value:
 
 --*/
 {
+	DbgPrint("DriverTestEvtDriverContextCleanup \n");
     UNREFERENCED_PARAMETER(DriverObject);
 
     PAGED_CODE ();
