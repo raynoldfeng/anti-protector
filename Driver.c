@@ -105,6 +105,13 @@ Return Value:
 	GetKernelModuleInfo("TesSafe.sys", &tp_loader_base, &tp_loader_size);
 	if (tp_loader_base != NULL) {
 		DbgPrint("[Tessafe.sys] address: %p\n", tp_loader_base);
+		//找对DriverObjectList的引用
+		char drvobjref_sig[] = { 0x45,0x33,0xC9,0xBA,0x02,0x00,0x00,0x10 };
+		PVOID drvobjref_adr = FindSignature(tp_loader_base, 0x2000, drvobjref_sig, sizeof(drvobjref_sig));
+		ULONGLONG drvobj_ref = (ULONGLONG)drvobjref_adr + 21;
+		UINT32 drvobj_offset = *(UINT32*)(drvobj_ref + 3);
+		ULONGLONG offset_drvobjlist = drvobj_ref + drvobj_offset + 7;
+		DbgPrint("driver object list: %p \n", offset_drvobjlist);
 
 		PVOID* global_drvobjlist = (PVOID*)((ULONGLONG)tp_loader_base + offset_drvobjlist);
 		PVOID* pmodule_list = *global_drvobjlist;
