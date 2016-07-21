@@ -107,8 +107,8 @@ Return Value:
 		DbgPrint("[Tessafe.sys] address: %p\n", tp_loader_base);
 		//找对DriverObjectList的引用
 		char drvobjref_sig[] = { 0x45,0x33,0xC9,0xBA,0x02,0x00,0x00,0x10 };
-		PVOID drvobjref_adr = FindSignature(tp_loader_base, 0x2000, drvobjref_sig, sizeof(drvobjref_sig));
-		ULONGLONG drvobj_ref = (ULONGLONG)drvobjref_adr + 21;
+		PVOID drvobjref_adr = FindSignature(tp_loader_base, 0x20000, drvobjref_sig, sizeof(drvobjref_sig));
+		ULONGLONG drvobj_ref = (ULONGLONG)drvobjref_adr + 22;
 		UINT32 drvobj_offset = *(UINT32*)(drvobj_ref + 3);
 		ULONGLONG offset_drvobjlist = drvobj_ref + drvobj_offset + 7;
 		DbgPrint("driver object list: %p \n", offset_drvobjlist);
@@ -118,6 +118,7 @@ Return Value:
 		LONGLONG module_count = *(LONGLONG*)((ULONGLONG)pmodule_list + 0x10);
 		DbgPrint("kernal moudule list: %p, count:%x \n", pmodule_list, module_count);
 
+		/*
 		PVOID modulebase;
 		PVOID* pmodule = *pmodule_list;
 		PVOID tessafe = NULL;
@@ -138,12 +139,12 @@ Return Value:
 				}
 				//找TP里的PsProcType
 				//该方法会导致TP卸载崩溃
-				/*tp_psproctype = FindSignature(modulebase, 0x20000, &PsProcessType, sizeof(PVOID));
-				if (tp_psproctype) {
-					DbgPrint("Tessafe extended PsProcessType address: %p\n", tp_psproctype);
-					*tp_psproctype = IoFileObjectType;
-					
-				}*/
+				//tp_psproctype = FindSignature(modulebase, 0x20000, &PsProcessType, sizeof(PVOID));
+				//if (tp_psproctype) {
+				//	DbgPrint("Tessafe extended PsProcessType address: %p\n", tp_psproctype);
+				//	*tp_psproctype = IoFileObjectType;
+				//	
+				//}
 				char sigDbgPrintDump[] = {0x4c, 0x8b, 0xdc, 0x49, 0x89, 0x4b, 0x08 };
 				PVOID DbgPrintDump = FindSignature(tp_loader_base, 0x10000, sigDbgPrintDump, sizeof(sigDbgPrintDump));
 				DbgPrint("loader's DbgPrintDump address: %p\n", DbgPrintDump);
@@ -159,6 +160,7 @@ Return Value:
 			pmodule++;
 			module_count--;
 		}		
+		*/
 	}
 
 	UNICODE_STRING disabledbg;
@@ -177,6 +179,7 @@ Return Value:
 			if (((pre_func > (ULONGLONG)tp_loader_base) && (pre_func < (ULONGLONG)tp_loader_base + tp_loader_size)) ||
 				(post_func > (ULONGLONG)tp_loader_base) && (post_func < (ULONGLONG)tp_loader_base + tp_loader_size)) {
 	//			ObUnRegisterCallbacks(pnode->Handle);
+	
 				DbgPrint("Tessafe registered Callback function pre:%p post:%p\n", pre_func, post_func);
 			}
 			back = back->Blink;
