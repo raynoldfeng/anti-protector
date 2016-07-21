@@ -110,11 +110,8 @@ Return Value:
 		PVOID drvobjref_adr = FindSignature(tp_loader_base, 0x20000, drvobjref_sig, sizeof(drvobjref_sig));
 		ULONGLONG drvobj_ref = (ULONGLONG)drvobjref_adr + 22;
 		UINT32 drvobj_offset = *(UINT32*)(drvobj_ref + 3);
-		ULONGLONG offset_drvobjlist = drvobj_ref + drvobj_offset + 7;
-		DbgPrint("driver object list: %p \n", offset_drvobjlist);
-
-		PVOID* global_drvobjlist = (PVOID*)((ULONGLONG)tp_loader_base + offset_drvobjlist);
-		PVOID* pmodule_list = *global_drvobjlist;
+		ULONGLONG global_drvobjlist = drvobj_ref + drvobj_offset + 7;
+		PVOID* pmodule_list = *(PVOID*)global_drvobjlist;
 		LONGLONG module_count = *(LONGLONG*)((ULONGLONG)pmodule_list + 0x10);
 		DbgPrint("kernal moudule list: %p, count:%x \n", pmodule_list, module_count);
 
