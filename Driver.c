@@ -110,17 +110,33 @@ Return Value:
 		PVOID drvobjref_adr = FindSignature(tp_loader_base, 0x20000, drvobjref_sig, sizeof(drvobjref_sig));
 		ULONGLONG drvobj_ref = (ULONGLONG)drvobjref_adr + 22;
 		UINT32 drvobj_offset = *(UINT32*)(drvobj_ref + 3);
-		ULONGLONG global_drvobjlist = drvobj_ref + drvobj_offset + 7;
-		PVOID* pmodule_list = *(PVOID*)global_drvobjlist;
-		LONGLONG module_count = *(LONGLONG*)((ULONGLONG)pmodule_list + 0x10);
-		DbgPrint("kernal moudule list: %p, count:%x \n", pmodule_list, module_count);
+		ULONGLONG global_pdrvobjlist = drvobj_ref + drvobj_offset + 7;
+		PVOID* pmodule_list = *(PVOID*)global_pdrvobjlist;
 
-		/*
-		PVOID modulebase;
-		PVOID* pmodule = *pmodule_list;
+		
+		LONGLONG ukn0 = *(LONGLONG*)((ULONGLONG)pmodule_list + 0);
+		LONGLONG ukn8 = *(LONGLONG*)((ULONGLONG)pmodule_list + 8);
+		LONGLONG ukn10 = *(LONGLONG*)((ULONGLONG)pmodule_list + 0x10);
+		LONGLONG ukn18 = *(LONGLONG*)((ULONGLONG)pmodule_list + 0x18);
+		DbgPrint("kernal moudule list: %p: %p,%p,%p,%p\n", pmodule_list, ukn0, ukn8, ukn10, ukn18);
+		//根据上面找出来的偏移得到起始指针和模块计数
+		LONGLONG module_count = *(LONGLONG*)((ULONGLONG)pmodule_list + 3*sizeof(PVOID));		
+		PVOID* pmodule = *(PVOID*)((ULONGLONG)pmodule_list + 1*sizeof(PVOID));
+
 		PVOID tessafe = NULL;
+		/*打印列表数据*/
+		//while (module_count) {
+		//	for (int i = 0; i < 6; i++) {
+		//		PVOID tmp = *(PVOID*)((ULONGLONG)*(pmodule) + i*sizeof(PVOID));
+		//		DbgPrint("param:%d, value:%p\n", i, tmp);
+		//	}
+		//	DbgPrint("------------\n");
+		//	pmodule++;
+		//	module_count--;
+		//}
+		
 		while (module_count) {
-			modulebase = *(PVOID*)((ULONGLONG)*pmodule + offset_drvobj_base);
+			PVOID modulebase = *(PVOID*)((ULONGLONG)*pmodule + offset_drvobj_base);
 			//一串TEXT段开头的特征码
 			char tpsig[] = {0x48, 0x89, 0x5c, 0x24, 0x08, 0x57, 0x48, 0x83, 0xec, 0x30};
 			PVOID tpsig_adr = FindSignature(modulebase, 0x2000, tpsig, sizeof(tpsig));
@@ -145,11 +161,13 @@ Return Value:
 				char sigDbgPrintDump[] = {0x4c, 0x8b, 0xdc, 0x49, 0x89, 0x4b, 0x08 };
 				PVOID DbgPrintDump = FindSignature(tp_loader_base, 0x10000, sigDbgPrintDump, sizeof(sigDbgPrintDump));
 				DbgPrint("loader's DbgPrintDump address: %p\n", DbgPrintDump);
+				
 				//被保护进程列表在gLPDbgPrintDump前一个
 				PVOID gLPDbgPrintDump = FindSignature(modulebase, 0x20000, &DbgPrintDump, sizeof(PVOID));
 				PVOID* protect_list = (PVOID*)((ULONGLONG)gLPDbgPrintDump - sizeof(PVOID));
 				DbgPrint("proctect list: %p\n", protect_list);
-				*protect_list = NULL;
+				if(protect_list)
+					*protect_list = NULL;
 			}
 			else {
 				DbgPrint("kernal moudule address: %p\n", modulebase);
@@ -157,7 +175,7 @@ Return Value:
 			pmodule++;
 			module_count--;
 		}		
-		*/
+		
 	}
 
 	UNICODE_STRING disabledbg;
